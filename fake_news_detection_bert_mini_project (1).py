@@ -74,7 +74,7 @@ def load_dataset():
     local_files = ['fake_news.csv', 'news.csv', 'WELFake_Dataset.csv', 'train.csv']
     for filename in local_files:
         if os.path.exists(filename):
-            print(f'📂 Loading from local file: {filename}')
+            print(f'Loading from local file: {filename}')
             try:
                 df = pd.read_csv(filename)
                 # Try to identify text and label columns
@@ -98,15 +98,15 @@ def load_dataset():
                             label_map = {unique_labels[0]: 0, unique_labels[1]: 1}
                             df_clean['label_id'] = df_clean['label_id'].map(label_map)
                     
-                    print(f'✅ Loaded {len(df_clean)} samples from {filename}')
+                    print(f'Loaded {len(df_clean)} samples from {filename}')
                     return df_clean
             except Exception as e:
-                print(f'⚠️  Error loading {filename}: {e}')
+                print(f'Error loading {filename}: {e}')
                 continue
     
     # Option 2: Try loading from HuggingFace datasets
     try:
-        print('📦 Attempting to load from HuggingFace datasets...')
+        print('Attempting to load from HuggingFace datasets...')
         from datasets import load_dataset as hf_load_dataset
         
         # Try GonzaloA/fake_news dataset
@@ -118,13 +118,13 @@ def load_dataset():
             'text': df['text'].astype(str),
             'label_id': df['label']  # 0=Real, 1=Fake
         })
-        print(f'✅ Loaded {len(df_clean)} samples from HuggingFace')
+        print(f'Loaded {len(df_clean)} samples from HuggingFace')
         return df_clean
     except Exception as e:
-        print(f'⚠️  Could not load from HuggingFace: {e}')
+        print(f'Could not load from HuggingFace: {e}')
     
     # Option 3: Use expanded demo dataset (fallback)
-    print('⚠️  Using expanded demo dataset. For better results, provide a real dataset!')
+    print('WARNING: Using expanded demo dataset. For better results, provide a real dataset!')
     import io
     DEMO_CSV = '''text,label_id
 Scientists confirm new cancer treatment shows 90% success rate in trials,0
@@ -159,13 +159,13 @@ Research team develops more efficient solar panel technology,0
 Chemtrails are government mind control experiment,1
 '''
     df_clean = pd.read_csv(io.StringIO(DEMO_CSV))
-    print(f'⚠️  Loaded {len(df_clean)} demo samples')
+    print(f'Loaded {len(df_clean)} demo samples')
     return df_clean
 
 # Load the dataset
 df_raw = load_dataset()
 df_raw['label'] = df_raw['label_id'].map({0: 'Real', 1: 'Fake'})
-print(f'\n📊 Total samples loaded: {len(df_raw)} rows')
+print(f'\nTotal samples loaded: {len(df_raw)} rows')
 df_raw.head()
 
 print('Label Distribution:')
@@ -186,7 +186,7 @@ plt.show()
 ratio = counts.max() / counts.min()
 print(f'\nClass imbalance ratio: {ratio:.2f}x')
 if ratio > 1.5:
-    print('⚠️  Imbalance detected. Consider weighted loss (Day 8).')
+    print('WARNING: Imbalance detected. Consider weighted loss (Day 8).')
 
 df_raw['word_count'] = df_raw['text'].astype(str).str.split().str.len()
 df_raw['char_count'] = df_raw['text'].astype(str).str.len()
@@ -352,7 +352,7 @@ best_val_acc = 0.0
 patience_counter = 0
 os.makedirs('/content/models', exist_ok=True)
 
-print(f'\n🚀 Starting training for {CONFIG["epochs"]} epochs...')
+print(f'\nStarting training for {CONFIG["epochs"]} epochs...')
 print(f'Early stopping patience: {CONFIG["early_stopping_patience"]} epochs\n')
 
 for epoch in range(1, CONFIG['epochs'] + 1):
@@ -375,16 +375,16 @@ for epoch in range(1, CONFIG['epochs'] + 1):
         patience_counter = 0
         model.save_pretrained('/content/models/best_model')
         tokenizer.save_pretrained('/content/models/best_model')
-        print(f'  ✅ Saved best model (val_acc={best_val_acc:.4f})')
+        print(f'  [SAVED] Best model (val_acc={best_val_acc:.4f})')
     else:
         patience_counter += 1
-        print(f'  ⏳ No improvement ({patience_counter}/{CONFIG["early_stopping_patience"]})')
+        print(f'  No improvement ({patience_counter}/{CONFIG["early_stopping_patience"]})')
         
         if patience_counter >= CONFIG['early_stopping_patience']:
-            print(f'\n⚠️  Early stopping triggered after {epoch} epochs')
+            print(f'\nEarly stopping triggered after {epoch} epochs')
             break
 
-print(f'\n✅ Training complete! Best Val Accuracy: {best_val_acc:.4f}')
+print(f'\nTraining complete! Best Val Accuracy: {best_val_acc:.4f}')
 
 epochs    = [h['epoch']     for h in history]
 tr_losses = [h['train_loss'] for h in history]
@@ -530,7 +530,7 @@ deploy_model.eval().to(DEVICE)
 @torch.no_grad()
 def classify_news(text):
     if not text.strip():
-        return '⚠️ Please enter some text.'
+        return 'WARNING: Please enter some text.'
     inputs = deploy_tok(text, max_length=CONFIG['max_length'], padding='max_length',
                         truncation=True, return_tensors='pt')
     inputs = {k: v.to(DEVICE) for k, v in inputs.items()
@@ -540,15 +540,15 @@ def classify_news(text):
     pred  = np.argmax(probs)
     label = 'REAL' if pred == 0 else 'FAKE'
     conf  = probs[pred] * 100
-    emoji = '✅' if pred == 0 else '🚨'
-    return f"{emoji} **{label}** (confidence: {conf:.1f}%)\n\nReal: {probs[0]*100:.1f}%  |  Fake: {probs[1]*100:.1f}%"
+    marker = '[REAL]' if pred == 0 else '[FAKE]'
+    return f"{marker} **{label}** (confidence: {conf:.1f}%)\n\nReal: {probs[0]*100:.1f}%  |  Fake: {probs[1]*100:.1f}%"
 
 demo = gr.Interface(
     fn=classify_news,
     inputs=gr.Textbox(label='News Headline or Article', lines=5,
                       placeholder='Paste news text here...'),
     outputs=gr.Markdown(label='Result'),
-    title='📰 Fake News Detector',
+    title='Fake News Detector',
     description='Fine-tuned BERT / DistilBERT model to classify news as Real or Fake.',
     examples=[
         ['Scientists confirm new cancer treatment shows 90% success in trials.'],
